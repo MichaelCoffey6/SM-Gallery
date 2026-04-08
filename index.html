@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+  <script>
+    const loadCSS = new Promise(onload => {
+      document.head.append(
+        Object.assign(
+          document.createElement('link'),
+          { href: './style.css', rel: 'stylesheet', onload }
+        )
+      )
+    }) 
+  </script>
+  <script src="./src/scripts/jszip.js"></script>
+  <script>
+    const async = async () => Uint8Array.fromBase64('UklGRvAAAABXRUJQVlA4TOQAAAAvl8BJEBLHkSQ5ig94i4nnCAbgQ8eInUN2HHMPRb8Ism3I5nPB85Ug2zY1ghoc6v2fgC7/EthQsGf/+05ldrm8QLPJJzTbyz/0MC7vEM297tC2QZ6CbZiPbMPzkIkyN8gz1rJ5BrYp3E/l8gSM8qv8772GefxtGp43NEQN62iIGqI284T4OnCXyQ8Eb5/ZFn+YBXmF4BEed4QL8oq7zLb8q5lv1MsnBFfzBsfbIMKCPOIw13OY+YXgMbzg8hH/Ovx5xIS7YD7B1Z1vjMsvsNI3jPPvtDzBf7wu++e/BXtKm8fOHwA=')
+    
+    const allPictures = {
+      'pic1.png': {
+        _data: {},
+        dir: false,
+        date: new Date(Date.now() + 100),
+        name: 'pic1.png',
+        async,
+      },
+      'folder1-suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuper/pic2.png': {
+        _data: {},
+        dir: false,
+        date: new Date(new Date().setFullYear(2020)),
+        name: 'folder1-suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuper/pic2.png',
+        async,
+      },
+      'folder1-suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuper/pic3.jpg': {
+        _data: {},
+        dir: true,
+        date: new Date(),
+        name: 'folder1-suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuper/pic3.jpg',
+        async,
+      },
+      'folder1-suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuper/pic4.jpg': {
+        _data: {},
+        dir: true,
+        date: new Date('Sat Jan 09 2024'),
+        name: 'folder1-suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuper/pic4.jpg',
+        async,
+      },
+      'folder1/folder2/pic5.jpg': {
+        _data: {},
+        dir: true,
+        date: new Date('Sat Jan 09 2024'),
+        name: 'folder1/folder2/pic5.jpg',
+        async,
+      },
+      'folder1/folder2/pic6.jpg': {
+        _data: {},
+        dir: true,
+        date: new Date(),
+        name: 'folder1/folder2/pic6.jpg',
+        async,
+      }
+    }
+    
+    if (!('randomUUID' in crypto)) crypto.randomUUID = () => (
+      ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, 
+        c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+      )
+    )
+  </script>
+  <script type="module" src="./src/scripts/app.mjs"></script>
+</head>
+<body>
+  <template id="picturesTmpl">
+    <div class="picturesSection">
+      <header>
+        <picture class="selectedIconCont">
+          <img src="./src/assets/selected.svg" alt="selected image icon" class="selectedIcon" />
+          
+          <img src="./src/assets/unselected.svg" alt="unselected image icon" class="unselectedIcon" />
+        </picture>
+        
+        <h2 class="picturesDate"></h2>
+      </header>
+      
+      <div class="picturesOfTheDate"></div>
+    </div>
+  </template>
+  
+  <template id="pictureTmpl">
+    <picture class="picture">
+      <picture class="selectedIconCont">
+        <img src="./src/assets/selected.svg" alt="selected image icon" class="selectedIcon" />
+        
+        <img src="./src/assets/unselected.svg" alt="unselected image icon" class="unselectedIcon" />
+      </picture>
+    </picture>
+  </template>
+  
+  <template id="zipFileTmpl">
+    <div class="importFile">
+      <picture class="importPicture">
+        <picture class="selectedIconCont">
+          <img src="./src/assets/selected.svg" alt="selected image icon" class="selectedIcon" />
+          <img src="./src/assets/unselected.svg" alt="unselected image icon" class="unselectedIcon" />
+        </picture>
+        
+        <img src="./src/assets/zip.svg" alt="zip icon" class="zipIcon" />
+      </picture>
+      
+      <span></span>
+    </div>
+  </template>
+  
+  <template id="albumTmpl">
+    <div class="albumCont">
+      <picture class="albumThumb"></picture>
+      
+      <div class="albumName"></div>
+      
+      <div class="albumLength">1</div>
+      
+      <picture class="selectedIconCont">
+        <img src="./src/assets/selected.svg" alt="selected image icon" class="selectedIcon" />
+        <img src="./src/assets/unselected.svg" alt="unselected image icon" class="unselectedIcon" />
+      </picture>
+    </div>
+  </template>
+  
+  <div id="app">
+    <input type="radio" name="showSection" id="showPictures" hidden checked />
+    <input type="radio" name="showSection" id="showAlbums" hidden />
+    <input type="radio" name="showSection" id="showImport" hidden />
+    <input type="checkbox" id="moreOptsChk" hidden />
+    <input type="checkbox" id="stdViewChk" hidden />
+    
+    <header id="appHeader">
+      <article id="appHeaderInfo">
+        <picture>
+          <img alt="album thumbnail" id="currAlbumThumb" />
+        </picture>
+        
+        <span id="appHeaderText">Pictures</span>
+      </article>
+    </header>
+    
+    <main>
+      <div id="imgViewer" role="dialog">
+        <section id="imgViewerSlider">
+          <div id="imgViewerScroll"></div>
+        </section>
+        
+        <footer id="imgViewerInfo">
+          <div id="imgDetails">
+            <header id="imgDetailsHeader">Details</header>
+            
+            <article>
+              <div id="imgDateCont">
+                <img src="./src/assets/date.svg" />
+                <p id="imgDate"></p>
+              </div>
+              
+              <div id="imgInfoCont">
+                <img src="./src/assets/img info.svg" id="imgInfoIcon" />
+                <p id="imgName"></p>
+                <p id="imgPath"></p>
+                <p id="imgLength"></p>
+                <p id="imgSize"></p>
+              </div>
+            </article>
+          </div>
+          
+          <div id="imgDetailsVoid"></div>
+        </footer>
+      </div>
+      
+      <header id="mainHeader">
+        <div id="moreOptsBtns" role="dialog">
+          <button id="editPicsBtn">Edit</button>
+          <label for="stdViewChk" id="stdViewBtn"><span></span></label>
+          <button id="sortPicsBtn">Sort</button>
+          <button id="detailsBtn">Details</button>
+        </div>
+        
+        <div>
+          <div id="normalTopLeftBtns">
+            <button id="backBtn">
+              <span class="bg"></span>
+              
+              <span>
+                <img src="./src/assets/back.svg" alt="back button icon" />
+              </span>
+            </button>
+            
+            <h2 id="mainHeaderTitle">Details</h2>
+          </div>
+          
+          <div id="selectionTopLeftBtns">
+            <div id="selectAll">
+              <picture class="selectedIconCont">
+                <img src="./src/assets/selected.svg" alt="selected image icon" class="selectedIcon" />
+                <img src="./src/assets/unselected.svg" alt="unselected image icon" class="unselectedIcon" />
+              </picture>
+              
+              <span>All</span>
+            </div>
+            
+            <h2 id="selectedCount">0</h2>
+          </div>
+        </div>
+        
+        <div>
+          <!--<button id="searchBtn">
+            <span class="bg"></span>
+            <span>S</span>
+          </button>-->
+          
+          <label for="moreOptsChk" id="moreOptsBtn">
+            <span class="bg"></span>
+            
+            <span>
+              <img src="./src/assets/more.svg" alt="more options button icon" />
+            </span>
+          </label>
+        </div>
+      </header>
+      
+      <div id="mainHeaderBack"></div>
+      
+      <div id="screens">
+        <section id="pictures"></section>
+        
+        <section id="albums"></section>
+        
+        <section id="albumPics"></section>
+        
+        <section id="imports">
+          <input type="file" id="zipInp" accept="*" hidden />
+          
+          <label for="zipInp" id="addPicture">
+            <img src="./src/assets/Add.svg" alt="Add picture icon" />
+          </label>
+          
+          <article id="importedFiles"></article>
+        </section>
+        
+        <footer id="navigationBar">
+          <label for="showPictures" class="checked">
+            <span class="txt">Pictures</span>
+          </label>
+          
+          <label for="showAlbums">
+            <span class="txt">Albums</span>
+          </label>
+          
+          <label for="showImport">
+            <span class="txt">Import</span>
+          </label>
+          
+          <nav id="selectionSubOpts">
+            <button id="deleteSelBtn">
+              <img src="./src/assets/selection delete.svg" alt="delete selection icon" />
+            </button>
+            
+            <button id="shareSelBtn">
+              <img src="./src/assets/share selection.svg" alt="share selection icon" />
+            </button>
+          </nav>
+        </footer>
+      </div>
+      
+      <article id="videoControls">
+        <div id="videoTimer">
+          <div id="videoTimeBar">
+            <div id="videoNow"></div>
+            
+            <button id="videoNowBtn"></button>
+          </div>
+          
+          <div id="videoTime">
+            <span id="videoCurrTime">0:00</span>
+            
+            <span id="videoDuration">0:00</span>
+          </div>
+        </div>
+        
+        <div id="videoBtns">
+          <button id="videoMuteBtn">
+            <img src="./src/assets/mute.svg" alt="mute icon" id="muteIcon" />
+            <img src="./src/assets/vol.svg" alt="volume icon" id="volumeIcon" />
+          </button>
+          
+          <button id="videoBackBtn">
+            <img src="./src/assets/jump.svg" alt="'jump time' icon" />
+          </button>
+          
+          <button id="videoPlayBtn">
+            <img src="./src/assets/videoPlay.svg" alt="'play/pause video' icon" id="playIcon" />
+            <img src="./src/assets/videoPause.svg" alt="'play/pause video' icon" id="pauseIcon" />
+          </button>
+          
+          <button id="videoAdvanceBtn">
+            <img src="./src/assets/jump.svg" alt="'jump time' icon" />
+          </button>
+          
+          <button id="picInPicBtn">
+            <img src="./src/assets/picInPic.svg" alt="'picture in picture' icon" />
+          </button>
+        </div>
+      </article>
+      
+      <footer id="imgSubOpts">
+        <button id="addFavoriteBtn" data-area="favorites">
+          <picture>
+            <img src="./src/assets/favorite off.svg" alt="add favorite icon" id="addFavoriteIcon" />
+            <img src="./src/assets/favorite on.svg" alt="remove favorite icon" id="removeFavoriteIcon" />
+          </picture>
+        </button>
+        
+        <button id="shareBtn" data-area="share">
+          <img src="./src/assets/share.svg" alt="share image icon" />
+        </button>
+        
+        <button id="deleteBtn" data-area="recycle">
+          <img src="./src/assets/delete.svg" alt="delete image icon" />
+        </button>
+      </footer>
+    </main>
+    
+    <div class="popupFixed" hidden>
+      <div id="duplicateConfirmation" role="dialog" >
+        <p>This <span class="fileTypeCont">image</span> already exists, do you want to uplicate it?</p>
+        
+        <div>
+          <button id="duplicateCancel" class="cancelBtn">Cancel</button>
+          <span></span>
+          <button id="duplicateAccept" class="acceptBtn">Duplicate</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="popupFixed" hidden>
+      <div id="deleteConfirmation" role="dialog">
+        <p>Delete <span class="lengthCont">1</span> <span class="fileTypeCont">image</span>?</p>
+        
+        <div>
+          <button class="cancelBtn">Cancel</button>
+          <span></span>
+          <button class="acceptBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="popupFixed" hidden>
+      <div id="sortPics" role="dialog">
+        <h2>Sort by</h2>
+        
+        <label for="sortByDateChk">
+          <input type="radio" id="sortByDateChk" name="sortBy" checked hidden />
+          
+          <div class="checkboxIcon">
+            <img src="./src/assets/checked.svg" alt="checked icon" class="checkedIcon" />
+            <img src="./src/assets/unchecked.svg" alt="unchecked icon" class="uncheckedIcon" />
+          </div>
+          
+          <span>Date modified</span>
+        </label>
+        
+        <label for="sortByNameChk">
+          <input type="radio" id="sortByNameChk" name="sortBy" hidden />
+          
+          <div class="checkboxIcon">
+            <img src="./src/assets/checked.svg" alt="checked icon" class="checkedIcon" />
+            <img src="./src/assets/unchecked.svg" alt="unchecked icon" class="uncheckedIcon" />
+          </div>
+          
+          <span>Name</span>
+        </label>
+        
+        <div class="orderTxt">
+          <span>Order</span>
+          <span></span>
+        </div>
+        
+        <label for="sortAscChk">
+          <input type="radio" id="sortAscChk" name="sortOrder" hidden />
+          
+          <div class="checkboxIcon">
+            <img src="./src/assets/checked.svg" alt="checked icon" class="checkedIcon" />
+            <img src="./src/assets/unchecked.svg" alt="unchecked icon" class="uncheckedIcon" />
+          </div>
+          
+          <span>Ascending</span>
+        </label>
+        
+        <label for="sortDesChk">
+          <input type="radio" id="sortDesChk" name="sortOrder" checked hidden />
+          
+          <div class="checkboxIcon">
+            <img src="./src/assets/checked.svg" alt="checked icon" class="checkedIcon" />
+            <img src="./src/assets/unchecked.svg" alt="unchecked icon" class="uncheckedIcon" />
+          </div>
+          
+          <span>Descending</span>
+        </label>
+        
+        <div class="btns">
+          <button id="sortCancel">Cancel</button>
+          
+          <span></span>
+          
+          <button id="sortAccept">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
