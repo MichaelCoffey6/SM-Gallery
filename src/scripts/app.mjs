@@ -1716,8 +1716,8 @@ app.style.setProperty("--windowW", window.innerWidth);
 app.style.setProperty("--windowH", window.innerHeight);
 navigationBar.style.setProperty("--navigation-bar-height", navigationBar.clientHeight);
 var [zipTest, videoTest] = await Promise.all([
-  fetch("../src/scripts/test/appTest.zip").then((res) => res.blob()),
-  fetch("../src/scripts/test/Vanny.mp4").then((res) => res.blob())
+  fetch("./src/scripts/test/appTest.zip").then((res) => res.blob()),
+  fetch("./src/scripts/test/Vanny.mp4").then((res) => res.blob())
 ]);
 var testEntries = Object.entries(testPictures);
 loadPictures(testEntries, "@zip");

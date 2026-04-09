@@ -117,8 +117,8 @@ app.style.setProperty('--windowH', window.innerHeight)
 navigationBar.style.setProperty('--navigation-bar-height', navigationBar.clientHeight)
 
 const [zipTest, videoTest] = await Promise.all([
-  fetch('../src/scripts/test/appTest.zip').then(res => res.blob()),
-  fetch('../src/scripts/test/Vanny.mp4').then(res => res.blob())
+  fetch('./src/scripts/test/appTest.zip').then(res => res.blob()),
+  fetch('./src/scripts/test/Vanny.mp4').then(res => res.blob())
 ])
 
 const testEntries = Object.entries(testPictures)
