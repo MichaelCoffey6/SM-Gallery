@@ -44,6 +44,7 @@ import { onViewerScroll, changeViewerSection, onViewerPointerDown } from "./view
 import { onWindowResize, onMainClick, onAppScroll } from "./generalEvents.js"
 import { onPopState, onBackPage } from "./backMode.js"
 import { changeImportSection } from "./navigation.js"
+import { testPictures } from "./test/testPictures.js"
 
 window.addEventListener('resize', onWindowResize)
 window.addEventListener('popstate', onPopState)
@@ -102,7 +103,6 @@ shareSelBtn.addEventListener('click', shareSelection)
 
 
 
-const picturesEntries = Object.entries(allPictures)
 
 
 
@@ -110,16 +110,18 @@ const picturesEntries = Object.entries(allPictures)
 //await document.fonts.ready
 
 createFavoritesAlbum()
-loadPictures(picturesEntries, '@zip')
+
 app.scrollTop = 220
 app.style.setProperty('--windowW', window.innerWidth)
 app.style.setProperty('--windowH', window.innerHeight)
 navigationBar.style.setProperty('--navigation-bar-height', navigationBar.clientHeight)
 
 const [zipTest, videoTest] = await Promise.all([
-  fetch('./appTest.zip').then(res => res.blob()),
-  fetch('./Vanny.mp4').then(res => res.blob())
+  fetch('../src/scripts/test/appTest.zip').then(res => res.blob()),
+  fetch('../src/scripts/test/Vanny.mp4').then(res => res.blob())
 ])
 
+const testEntries = Object.entries(testPictures)
+loadPictures(testEntries, '@zip')
 loadZip(Object.assign(videoTest, { name: 'Vanny.mp4' }))
 loadZip(Object.assign(zipTest, { name: 'zipTest.zip' }))

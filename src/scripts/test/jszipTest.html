@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+  <script src="../jszip.js"></script>
+  <script type="module">
+    filero.onchange = async () => {
+      const [ file ] = filero.files
+      const data = await file.bytes()
+      const zip = await JSZip.loadAsync(data)
+      const [ pic ] = Object.values(zip.files)
+      console.log(pic)
+      
+      console.time('base64')
+      await pic.async('base64')
+      console.timeEnd('base64')
+      
+      console.time('uint8array')
+      ;(await pic.async('uint8array')).toBase64()
+      console.timeEnd('uint8array')
+    }
+  </script>
+</head>
+<body>
+  <input type="file" id="filero" />
+</body>
+</html>
