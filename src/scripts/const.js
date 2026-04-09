@@ -103,6 +103,7 @@ export const screens = {
 
 export const State = {
   imgOpen: false,
+  videoOpen: false,
   appHeaderOpen: true,
   selectionMode: false,
   verticalScroll: false,

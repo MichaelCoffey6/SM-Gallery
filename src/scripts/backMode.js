@@ -27,7 +27,7 @@ export const onBackPage = () => {
   }
 }
 
-export const onPopState = (event) => {
+export const onPopState = event => {
   const inTransition = app.classList.contains('inTransition')
   const imgOpen = app.classList.contains('imgView')
   const albumOpen = app.classList.contains('albumOpen')

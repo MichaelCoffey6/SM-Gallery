@@ -87,6 +87,7 @@ var screens = {
 };
 var State = {
   imgOpen: false,
+  videoOpen: false,
   appHeaderOpen: true,
   selectionMode: false,
   verticalScroll: false,
@@ -772,7 +773,7 @@ var onViewerHorizontalSnap = (newMainView, prevMainView) => {
   currPreview.style.display = "";
   newPreview.style.display = "none";
   prevVideo?.proxy.pause?.();
-  if (+isVideo) onVideoFocus(imgViewerImg, prevVideo);
+  if (State.videoOpen = +isVideo) onVideoFocus(imgViewerImg, prevVideo);
   updateDetailsInfo(JSON.parse(details));
 };
 var onViewerHorizontalSnapEnd = (newMainView, prevMainView, sameMainView) => {
@@ -795,8 +796,13 @@ var onViewerScroll = () => {
   const opacityInverse = currScroll / 300;
   const opacity = 1 - +opacityInverse.toFixed(2);
   if (!mainHeader.style.opacity) {
-    videoControls.style.opacity = imgSubOpts.style.opacity = opacity;
-    videoControls.style.pointerEvents = imgSubOpts.style.pointerEvents = opacity ? "auto" : "none";
+    const pointerEvents = opacity ? "auto" : "none";
+    imgSubOpts.style.opacity = opacity;
+    imgSubOpts.style.pointerEvents = pointerEvents;
+    if (State.videoOpen) {
+      videoControls.style.opacity = opacity;
+      videoControls.style.pointerEvents = pointerEvents;
+    }
   }
   if (currScroll < scrollBottom - 120) {
     mainHeader.style.backgroundColor = "";

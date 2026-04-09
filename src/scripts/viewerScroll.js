@@ -1,7 +1,6 @@
 import { addScrollSnap } from "./addScrollSnap.js"
 
 import { State, $, $$, app, addFavoriteBtn, imgViewerScroll, imgViewerSlider, videoControls, mainHeader, mainHeaderTitle, imgViewer, imgSubOpts, imgDetailsHeader } from "./const.js"
-import { arr } from "./utils.js"
 import { updateDetailsInfo } from "./imgViewer.js"
 import { onVideoFocus } from "./videoPlayer.js"
 import { navigate } from "./navigation.js"
@@ -33,7 +32,7 @@ export const onViewerHorizontalSnap = (newMainView, prevMainView) => {
 
   prevVideo?.proxy.pause?.()
 
-  if (+isVideo) onVideoFocus(imgViewerImg, prevVideo)
+  if (State.videoOpen = +isVideo) onVideoFocus(imgViewerImg, prevVideo)
 
   updateDetailsInfo(JSON.parse(details))
 }
@@ -66,11 +65,15 @@ export const onViewerScroll = () => {
   const opacity = 1 - +opacityInverse.toFixed(2)
 
   if (!mainHeader.style.opacity) {
-    videoControls.style.opacity =
-      imgSubOpts.style.opacity = opacity
+    const pointerEvents = opacity ? "auto" : "none"
+    
+    imgSubOpts.style.opacity = opacity
+    imgSubOpts.style.pointerEvents = pointerEvents
 
-    videoControls.style.pointerEvents =
-      imgSubOpts.style.pointerEvents = opacity ? "auto" : "none"
+    if (State.videoOpen) {
+      videoControls.style.opacity = opacity
+      videoControls.style.pointerEvents = pointerEvents
+    }
   }
   //imgViewerImg.style.transform = opacity ? "translateY(" + ((innerHeight / 2) - ((innerHeight - currScroll) / 2)) + "px)" : ""
 
