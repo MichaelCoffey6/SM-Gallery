@@ -29,6 +29,7 @@ export const loadZip = async (file, isImported) => {
 
   if (!Object.values(MIMETYPES).flat().includes(type)) {
     alert(`Invalid file: mimetype ${type} isn't valid`)
+    cl(name)
     return
   }
 

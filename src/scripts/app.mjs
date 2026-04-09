@@ -1,6 +1,7 @@
 // src/scripts/const.js
 var $ = (sel, ctx = document) => ctx.querySelector(sel);
 var $$ = (sel, ctx = document) => ctx.querySelectorAll(sel);
+var cl = console.log;
 var app = $("#app");
 var appHeaderText = $("#appHeaderText");
 var appMain = $("main");
@@ -1296,6 +1297,7 @@ var loadZip = async (file, isImported) => {
   const { name: name2, type, lastModifiedDate, lastModified = Date.now() } = file;
   if (!Object.values(MIMETYPES).flat().includes(type)) {
     alert(`Invalid file: mimetype ${type} isn't valid`);
+    cl(name2);
     return;
   }
   const popupFixed = duplicateConfirmation.parentElement;
