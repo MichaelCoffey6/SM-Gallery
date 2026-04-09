@@ -1579,10 +1579,6 @@ var closeAlbum = () => {
   appHeaderText.innerText = "Albums";
   app.classList.remove("albumOpen");
   $(".albumCont.open")?.classList.remove("open");
-  app.scrollTo({
-    top: 220,
-    behavior: app.scrollTop ? "instant" : "smooth"
-  });
   for (const picture of $$(".picture")) {
     const { day } = picture.dataset;
     const { imgGroupId } = $(".pictureImg", picture).dataset;
@@ -1603,6 +1599,10 @@ var onPopState = (event) => {
   const imgOpen = app.classList.contains("imgView");
   const albumOpen = app.classList.contains("albumOpen");
   moreOptsChk.checked = false;
+  app.scrollTo({
+    top: 220,
+    behavior: app.scrollTop ? "instant" : "smooth"
+  });
   if (app.classList.contains("imports")) {
     app.classList.remove("imports");
     for (const pictureImg of $$(".importPicture .pictureImg")) {
