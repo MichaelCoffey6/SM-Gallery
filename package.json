@@ -3,7 +3,5 @@
   "scripts": {
     "js": "esbuild ./src/scripts/main.mjs --bundle --watch --external:./src/scripts/addScrollSnap.js --format=esm --outfile=./src/scripts/app.mjs"
   },
-  "packages": {
-    
-  }
+  "packages": {}
 }
