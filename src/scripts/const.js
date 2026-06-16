@@ -10,6 +10,7 @@ export const showPictures = $('#showPictures')
 export const showAlbums = $('#showAlbums')
 export const showImport = $('#showImport')
 
+export const videoIconTmpl = $('#videoIconTmpl')
 export const zipFileTmpl = $('#zipFileTmpl')
 export const pictureTmpl = $('#pictureTmpl')
 export const picturesTmpl = $('#picturesTmpl')
@@ -103,10 +104,11 @@ export const screens = {
 
 export const State = {
   imgOpen: false,
-  videoOpen: false,
+  videoOpen: 0,
   appHeaderOpen: true,
   selectionMode: false,
   verticalScroll: false,
+  loadingPictures: false,
   prevInpSection: showPictures,
   prevInpSectionGallery: showPictures,
   prevVideoCallbacks: [],

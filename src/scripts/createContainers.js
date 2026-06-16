@@ -1,4 +1,5 @@
-import { $, cl, State, currYear, currDay, picturesTmpl, albumTmpl, pictures, albums } from "./const.js"
+import { $, cl, State, app, currYear, currDay, picturesTmpl, albumTmpl, pictures, albums, albumPics } from "./const.js"
+import { tryP } from "./utils.js"
 import { toggleMultipleSelection } from "./selection.js"
 
 export const createPictureElement = ({ picture, albumPath, day, time, year }) => {
@@ -8,12 +9,12 @@ export const createPictureElement = ({ picture, albumPath, day, time, year }) =>
   const picturesHeader = $('header', picturesSection)
   const picturesDate = $('.picturesDate', picturesSection)
   const picturesCont = $('.picturesOfTheDate', picturesSection)
+  const currCont = app.classList.contains('albumOpen') ? albumPics : picturesCont
 
   picturesSection.dataset.time = time
   picturesSection.dataset.day = day
 
   if (isTemplate) {
-    const year = +day.slice(-4)
     const formatDate = year !== currYear
       ? day.slice(4)
       : day.slice(4, -4)
@@ -22,7 +23,7 @@ export const createPictureElement = ({ picture, albumPath, day, time, year }) =>
     toggleMultipleSelection(picturesHeader, () => picturesCont.children)
   }
 
-  picturesCont.append(picture)
+  currCont.append(picture)
   pictures.append(picturesSection)
 }
 
@@ -33,7 +34,11 @@ export const createAlbumElement = (absolutePath, albumNameStr) => {
   const albumName = $('.albumName', albumCont)
   const albumThumbImg = new Image()
 
-  State.imgs[absolutePath].then(async uri => {
+  albumName.innerText = albumNameStr
+  albumThumb.append(albumThumbImg)
+  albums.append(albumCont)
+
+  const decodeThumb = State.imgs[absolutePath].then(async uri => {
     const picture = State.pics[absolutePath] ?? {}
     const { isVideo } = picture.dataset ?? {}
 
@@ -42,23 +47,18 @@ export const createAlbumElement = (absolutePath, albumNameStr) => {
 
     if (+isVideo) {
       const pictureImg = $('.pictureImg', picture)
-      await pictureImg.decode().catch(e => 0)
+      await tryP(pictureImg.decode())
 
       const { src: minURI } = pictureImg
       albumThumbImg.src = minURI
     }
     else albumThumbImg.src = uri
 
-    await albumThumbImg.decode().catch(e => 0)
+    await tryP(albumThumbImg.decode())
     const max = Math.max(albumThumbImg.width, albumThumbImg.height)
 
     if (max < 200) albumThumbImg.style.imageRendering = "pixelated"
   })
 
-  albumName.innerText = albumNameStr
-
-  albumThumb.append(albumThumbImg)
-  albums.append(albumCont)
-
-  return albumCont
+  return { albumCont, decodeThumb }
 }

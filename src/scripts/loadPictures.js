@@ -1,6 +1,6 @@
-import { State, $, $$, cl, sortDesChk, albums, imports, imgViewerScroll, favoritesName, canvas, canvasCtx, importsName, pauseProp, playProp, mutedProp, app, albumPics, currAlbumThumb, selectAll, appHeaderText, sortAscChk, sortByDateChk, pictureTmpl, pictures, importedFiles } from "./const.js"
+import { State, $, $$, cl, sortDesChk, videoIconTmpl, albums, imports, imgViewerScroll, favoritesName, canvas, canvasCtx, importsName, pauseProp, playProp, mutedProp, app, albumPics, currAlbumThumb, selectAll, appHeaderText, sortAscChk, sortByDateChk, pictureTmpl, pictures, importedFiles } from "./const.js"
 import { MIMETYPES, FILETYPES } from "./types.js"
-import { tryP, getPicSize } from "./utils.js"
+import { tryP, getPicSize, formatSeconds } from "./utils.js"
 import { sortAlbums, sortPicsByDate, sortPicsByName } from "./sortGallery.js"
 import { checkSelection, uncheckSelection, toggleSelection } from "./selection.js"
 import { createPictureElement, createAlbumElement } from "./createContainers.js"
@@ -35,7 +35,7 @@ export const getMinImg = async (img, mimetype) => {
     await new Promise(resolve => {
       img.addEventListener('timeupdate', resolve, { once: true })
       img.currentTime = Math.round(img.duration / 2)
-      setTimeout(resolve, 500)
+      //setTimeout(resolve, 500)
     })
 
     canvas.width = width
@@ -64,6 +64,8 @@ export const onAlbumClick = (albumCont, albumPath, absolutePath, hidePicture) =>
     State.selectionMode &&
     !app.classList.contains('albumOpen')
   ) return
+  
+  //if (State.loadingPictures) return
 
   $('.albumCont.open')?.classList.remove('open')
   albumCont.classList.add('open')
@@ -88,7 +90,7 @@ export const onAlbumClick = (albumCont, albumPath, absolutePath, hidePicture) =>
   State.imgs[absolutePath].then(async uri => {
     currAlbumThumb.src = uri
 
-    await currAlbumThumb.decode().catch(e => 0)
+    await tryP(currAlbumThumb.decode())
     const max = Math.max(currAlbumThumb.width, currAlbumThumb.height)
 
     if (max < 200) currAlbumThumb.style.imageRendering = "pixelated"
@@ -129,7 +131,7 @@ export const loadUint = async (uint, { file, picture, importPicture = null, time
   const hour24 = date.getHours()
   const dayFormat = day.slice(4).split('').toSpliced(-5, 0, ',').join('')
   const ext = path.split('.').at(-1)
-  const mimetype = MIMETYPES[ext].at(0) ?? "application/octet-stream"
+  const mimetype = MIMETYPES[ext]?.at(0) ?? "application/octet-stream"
   const uri = `data:${mimetype};base64,${b64}`
   const isVideo = +FILETYPES.video.includes(mimetype)
   const fileObj = new File([uint], fileName, { type: mimetype, lastModified: time })
@@ -150,7 +152,6 @@ export const loadUint = async (uint, { file, picture, importPicture = null, time
   bigImg.classList.add('imgViewerImg')
   minImg.style.display = "none"
   bigImg.style.display = "none"
-  bigImg.src = uri
 
   if (importPicture) {
     importPicture.dataset.imgGroupId = imgGroupId
@@ -200,12 +201,20 @@ export const loadUint = async (uint, { file, picture, importPicture = null, time
     })
 
     const decoded = new Promise(resolve =>
-      bigImg.oncanplaythrough = resolve
+      bigImg.addEventListener('canplaythrough', () => {
+        const videoIconDuration = videoIconTmpl.content.cloneNode(true)
+        const videoDurationCont = $('span', videoIconDuration)
+        videoDurationCont.innerText = formatSeconds(bigImg.duration)
+        picture.append(videoIconDuration)
+        resolve()
+      }, { once: true })
     )
 
     bigImg.proxy = videoProxy
     bigImg.decode = () => decoded
   }
+  
+  bigImg.src = uri
 
   await tryP(bigImg.decode())
 
@@ -254,7 +263,7 @@ export const loadUint = async (uint, { file, picture, importPicture = null, time
   return uri
 }
 
-export const loadPicture = ([path, file], zipName, albumNames, isImported, zipFileCont) => {
+export const loadPicture = async ([path, file], zipName, albumNames, isImported, zipFileCont) => {
   const { date } = file
   const day = date.toDateString()
   const time = date.getTime()
@@ -304,10 +313,13 @@ export const loadPicture = ([path, file], zipName, albumNames, isImported, zipFi
   }
 
   const uintProm = file.async('uint8array').then(uint => loadUint(uint, uintAdditionalInfo))
+  await Promise.all([ uintProm,  ])
+  
   State.imgs[absolutePath] = uintProm
   State.pics[absolutePath] = picture
-
+  
   createPictureElement({ picture, albumPath, day, time, year })
+  
 
   const albumLength = $(`.albumCont[data-album-path="${albumPath}"] .albumLength`)
 
@@ -321,7 +333,7 @@ export const loadPicture = ([path, file], zipName, albumNames, isImported, zipFi
     return
   }
 
-  const albumCont = createAlbumElement(absolutePath, albumName)
+  const { albumCont, decodeThumb } = createAlbumElement(absolutePath, albumName)
   albumCont.dataset.albumPath = albumPath
   albumCont.dataset.albumName = albumName
   albumCont.dataset.absolutePath = absolutePath
@@ -343,31 +355,44 @@ export const loadPicture = ([path, file], zipName, albumNames, isImported, zipFi
 }
 
 export const loadPictures = async (picturesEntries, zipName, isImported, zipFileCont) => {
+  State.loadingPictures = true
   const albumNames = {}
 
   const picturesSorted = picturesEntries.toSorted(([, file1], [, file2]) =>
     file2.date.getTime() - file1.date.getTime()
   )
 
-  picturesSorted.forEach(entrie => loadPicture(entrie, zipName, albumNames, isImported, zipFileCont))
+  for (const entrie of picturesSorted) {
+    await new Promise(resolve => {
+      loadPicture(entrie, zipName, albumNames, isImported, zipFileCont).then(() => {
+        //sortAlbums()
+        //sortPicsByDate()
+        resolve()
+      })
+      
+      setTimeout(() => {
+        cl('jump')
+        //resolve()
+      }, 150)
+    })
+  }
 
-
-  pictures.replaceChildren.apply(
+  State.loadingPictures = false
+  sortPicsByDate()
+  sortAlbums()
+  /*pictures.replaceChildren.apply(
     pictures,
     Array.from(pictures.children).sort((section1, section2) =>
       section2.dataset.time - section1.dataset.time
     )
-  )
+  )*/
 
 
-  await Promise.all(Object.values(State.imgs))
 
-  sortAlbums()
-  sortPicsByDate()
 }
 
 export const createFavoritesAlbum = () => {
-  const favoritesAlbum = createAlbumElement(favoritesName, favoritesName)
+  const { albumCont: favoritesAlbum } = createAlbumElement(favoritesName, favoritesName)
   favoritesAlbum.hidden = true
   favoritesAlbum.dataset.albumPath = favoritesName
   favoritesAlbum.dataset.albumName = favoritesName

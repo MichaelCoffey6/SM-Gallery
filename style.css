@@ -628,10 +628,28 @@ main {
     position: absolute;
   }
   
+  .videoIcon {
+    position: absolute;
+    z-index: 1;
+    left: 3px;
+    bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 0px;
+    padding-right: 5px;
+    font-size: 10px;
+    border-radius: 5px;
+    background-color: #0004;
+    
+    img {
+      width: 20px;
+    }
+  }
+  
   &[data-is-video="1"]::after {
     width: 20px;
     height: 20px;
-    content: '';
+    
     background-image: url('./src/assets/videoMiniId.svg');
     background-size: contain;
     background-repeat: no-repeat;

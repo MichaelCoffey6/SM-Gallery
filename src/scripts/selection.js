@@ -187,7 +187,7 @@ export const toggleSelection = (container, section) => {
   let timeoutId = NaN
 
   container.addEventListener('pointerdown', () => {
-    if (State.imgOpen) return
+    if (State.imgOpen || State.loadingPictures) return
 
     const albumOpen = app.classList.contains('albumOpen')
     const isAlbumThumb = container.classList.contains('albumCont')

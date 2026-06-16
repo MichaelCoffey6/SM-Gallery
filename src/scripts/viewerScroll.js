@@ -1,6 +1,6 @@
 import { addScrollSnap } from "./addScrollSnap.js"
 
-import { State, $, $$, app, addFavoriteBtn, imgViewerScroll, imgViewerSlider, videoControls, mainHeader, mainHeaderTitle, imgViewer, imgSubOpts, imgDetailsHeader } from "./const.js"
+import { State, $, $$, cl, app, imgViewerInfo, addFavoriteBtn, imgViewerScroll, imgViewerSlider, videoControls, mainHeader, mainHeaderTitle, imgViewer, imgSubOpts, imgDetailsHeader } from "./const.js"
 import { updateDetailsInfo } from "./imgViewer.js"
 import { onVideoFocus } from "./videoPlayer.js"
 import { navigate } from "./navigation.js"
@@ -55,6 +55,20 @@ export const onViewerHorizontalSnapEnd = (newMainView, prevMainView, sameMainVie
   $('.imgViewerImg', newMainView).style.display = "block"
 }
 
+export const onViewerScrollStart = () => {
+  imgDetailsHeader.style.opacity = ""
+  mainHeaderTitle.style.opacity = ""
+  mainHeader.style.backgroundColor = ""
+  imgSubOpts.style.opacity = 1
+  imgSubOpts.style.pointerEvents = "auto"
+  
+  if (State.videoOpen) {
+    videoControls.style.pointerEvents = "auto"
+    videoControls.style.opacity = 1
+  }
+  cl('start')
+}
+
 export const onViewerScroll = () => {
   if (app.classList.contains('inTransition')) return
 
@@ -76,10 +90,9 @@ export const onViewerScroll = () => {
     }
   }
   //imgViewerImg.style.transform = opacity ? "translateY(" + ((innerHeight / 2) - ((innerHeight - currScroll) / 2)) + "px)" : ""
-
-  if (currScroll < scrollBottom - 120) {
-    mainHeader.style.backgroundColor = ""
-    mainHeaderTitle.style.opacity = ""
+cl(currScroll, scrollBottom)
+  if (currScroll < 120) {
+    onViewerScrollStart()
     return
   }
 
@@ -89,10 +102,11 @@ export const onViewerScroll = () => {
   mainHeader.style.backgroundColor = "#000"
 }
 
-export const onViewerVerticalSnapEnd = (_, a, isSameSection) => {
+export const onViewerVerticalSnapEnd = (newMainView, a, isSameSection) => {
   const currScroll = Math.round(imgViewer.scrollTop)
 
   if (!isSameSection) {
+      alert(currScroll)
     if (currScroll === 0) {
       history.back()
     } else {
@@ -100,12 +114,8 @@ export const onViewerVerticalSnapEnd = (_, a, isSameSection) => {
       navigate({ details: true })
     }
   }
-
-  const scrollBottom = imgViewer.scrollHeight - imgViewer.clientHeight
-  const detailsOpacity = (scrollBottom - 30 - currScroll) / 60
-  imgDetailsHeader.style.opacity = detailsOpacity
-  mainHeaderTitle.style.opacity = 1 - detailsOpacity
-  mainHeader.style.backgroundColor = currScroll ? "#000" : ""
+  
+  viewerSectionConfig.onSnap(newMainView)
 }
 
 export const viewerPictureConfig = {
@@ -120,13 +130,31 @@ export const viewerPictureConfig = {
   onCancel: () => State.verticalScroll = true
 }
 
-const viewerSectionConfig = {
+export const viewerSectionConfig = {
   vertical: true,
   scrollCont: imgViewer,
   initScrollChild: imgViewerSlider,
   onSnapEnd: onViewerVerticalSnapEnd,
+  onSnap: (newMainView) => {
+    if (newMainView === imgViewerSlider) {
+      onViewerScrollStart()
+      return
+    }
+    
+    if (State.videoOpen) {
+      videoControls.style.opacity = 0
+      videoControls.style.pointerEvents = "none"
+    }
+  
+    imgSubOpts.style.pointerEvents = "none"
+    imgSubOpts.style.opacity = 0
+    imgDetailsHeader.style.opacity = 0
+    mainHeaderTitle.style.opacity = 1
+    mainHeader.style.backgroundColor = "#000"
+  },
+  onScroll: onViewerScroll,
   getScrollChildren: () => Array.from($$('#imgViewerSlider, #imgViewerInfo')),
-  onCancel: () => State.verticalScroll = false
+  onCancel: () => State.verticalScroll = false,
 }
 
 export const changeViewerSection = addScrollSnap(viewerSectionConfig)

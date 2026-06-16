@@ -56,5 +56,5 @@ $$('input[type=radio]').forEach(input => {
   const { id, name } = input
   const sibligs = document.getElementsByName(name)
 
-  input.addEventListener('change', () => changeScreen(sibligs))
+  input.addEventListener('change', () => changeScreen(sibligs, input, name, id))
 })

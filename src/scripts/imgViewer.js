@@ -1,8 +1,9 @@
-import { State, $, app, imgViewerInfo, videoControls, addFavoriteBtn, imgViewer, imgSubOpts, mainHeader, navigationBar, imgDate, imgName, imgPath, imgLength, imgSize } from "./const.js"
+import { State, $, cl, app, showPictures, pictures, albumPics, imgViewerInfo, videoControls, addFavoriteBtn, imgViewer, imgSubOpts, mainHeader, navigationBar, imgDate, imgName, imgPath, imgLength, imgSize } from "./const.js"
 import { convertBytes, tryP } from "./utils.js"
-import { viewerPictureConfig, onViewerVerticalSnapEnd, changeViewerPicture, changeViewerSection } from "./viewerScroll.js"
+import { viewerSectionConfig, viewerPictureConfig, onViewerVerticalSnapEnd, changeViewerPicture, changeViewerSection } from "./viewerScroll.js"
 import { navigate } from "./navigation.js"
 import { onVideoFocus } from "./videoPlayer.js"
+import { centerSectionScroll } from "./backMode.js"
 
 export const updateImgViewSize = (imageWidth, imageHeight, img, minImg) => {
   const {
@@ -38,7 +39,8 @@ export const updateDetailsInfo = ({ date, length, size, albumPath, fileName }) =
 }
 
 export const openDetails = () => {
-  changeViewerSection(imgViewerInfo, true, onViewerVerticalSnapEnd)
+  viewerSectionConfig.onSnap(imgViewerInfo)
+  changeViewerSection(imgViewerInfo, true, () => onViewerVerticalSnapEnd(imgViewerInfo, null, imgViewer.scrollTop === 0))
 }
 
 export const onViewerClick = () => {
@@ -73,6 +75,12 @@ export const onPictureClose = async () => {
 
   if (viewPicture.previousSibling) $('.imgViewerImg', viewPicture.previousSibling).style.display = "none"
   if (viewPicture.nextSibling) $('.imgViewerImg', viewPicture.nextSibling).style.display = "none"
+  
+  if (app.classList.contains('albumOpen')) {
+    centerSectionScroll(albumPics, picture)
+  } else if (showPictures.checked) {
+    centerSectionScroll(pictures, picture)
+  }
 
   if (prevVideo) {
     if (!document.pictureInPictureElement) {
@@ -141,7 +149,7 @@ export const onPictureClick = async ({
   if (viewPicture.previousSibling) $('.imgViewerImg', viewPicture.previousSibling).style.display = "block"
   if (viewPicture.nextSibling) $('.imgViewerImg', viewPicture.nextSibling).style.display = "block"
 
-  if (isVideo) {
+  if (State.videoOpen = isVideo) {
     onVideoFocus(bigImg, prevVideo)
 
     if (!document.pictureInPictureElement) {

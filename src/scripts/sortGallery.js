@@ -1,4 +1,5 @@
-import { State, $, $$, sortByDateChk, sortAscChk, favoritesName, importsName, app, sortPics, albums, albumPics, imgViewerScroll } from "./const.js"
+import { State, $, $$, cl, sortByDateChk, sortAscChk, pictures, favoritesName, importsName, app, sortPics, albums, albumPics, imgViewerScroll } from "./const.js"
+import { arr } from "./utils.js"
 
 export const sortImgViewerScroll = () => {
   $$('.pictureImg').forEach(({ dataset }) => {
@@ -61,21 +62,36 @@ export const sortPicsByDate = ascending => {
     sortImgViewerScroll()
     return
   }
+  
+  cl('sort')
 
-  $$('.picturesSection').forEach(section => {
+  const picturesSections = arr($$('.picturesSection'))
+  
+  picturesSections.forEach(section => {
     const picturesOfTheDate = $('.picturesOfTheDate', section)
 
     picturesOfTheDate.replaceChildren.apply(
       picturesOfTheDate,
       ascending
-        ? Array.from(picturesOfTheDate.children).sort((picture1, picture2) =>
+        ? arr(picturesOfTheDate.children).toSorted((picture1, picture2) =>
           picture1.dataset.time - picture2.dataset.time
         )
-        : Array.from(picturesOfTheDate.children).sort((picture1, picture2) =>
+        : arr(picturesOfTheDate.children).toSorted((picture1, picture2) =>
           picture2.dataset.time - picture1.dataset.time
         )
     )
   })
+  
+  pictures.replaceChildren.apply(
+    pictures,
+    ascending
+      ? picturesSections.toSorted((section1, section2) =>
+        section1.dataset.time - section2.dataset.time
+      )
+      : picturesSections.toSorted((section1, section2) =>
+        section2.dataset.time - section1.dataset.time
+      )
+  )
 
   sortImgViewerScroll()
 }

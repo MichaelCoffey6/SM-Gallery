@@ -8,6 +8,7 @@ var appMain = $("main");
 var showPictures = $("#showPictures");
 var showAlbums = $("#showAlbums");
 var showImport = $("#showImport");
+var videoIconTmpl = $("#videoIconTmpl");
 var zipFileTmpl = $("#zipFileTmpl");
 var pictureTmpl = $("#pictureTmpl");
 var picturesTmpl = $("#picturesTmpl");
@@ -87,10 +88,11 @@ var screens = {
 };
 var State = {
   imgOpen: false,
-  videoOpen: false,
+  videoOpen: 0,
   appHeaderOpen: true,
   selectionMode: false,
   verticalScroll: false,
+  loadingPictures: false,
   prevInpSection: showPictures,
   prevInpSectionGallery: showPictures,
   prevVideoCallbacks: [],
@@ -269,17 +271,27 @@ var sortPicsByDate = (ascending) => {
     sortImgViewerScroll();
     return;
   }
-  $$(".picturesSection").forEach((section) => {
+  cl("sort");
+  const picturesSections = arr($$(".picturesSection"));
+  picturesSections.forEach((section) => {
     const picturesOfTheDate = $(".picturesOfTheDate", section);
     picturesOfTheDate.replaceChildren.apply(
       picturesOfTheDate,
-      ascending ? Array.from(picturesOfTheDate.children).sort(
+      ascending ? arr(picturesOfTheDate.children).toSorted(
         (picture1, picture2) => picture1.dataset.time - picture2.dataset.time
-      ) : Array.from(picturesOfTheDate.children).sort(
+      ) : arr(picturesOfTheDate.children).toSorted(
         (picture1, picture2) => picture2.dataset.time - picture1.dataset.time
       )
     );
   });
+  pictures.replaceChildren.apply(
+    pictures,
+    ascending ? picturesSections.toSorted(
+      (section1, section2) => section1.dataset.time - section2.dataset.time
+    ) : picturesSections.toSorted(
+      (section1, section2) => section2.dataset.time - section1.dataset.time
+    )
+  );
   sortImgViewerScroll();
 };
 var sortAlbums = () => {
@@ -356,13 +368,13 @@ var changeImportSection = () => {
     importPicture.append(pictureImg);
   }
 };
-var changeScreen = (sibligs) => {
+var changeScreen = (sibligs, input, name, id) => {
   if (name === showPictures.name) {
     const currentLabelSection = $(`label[for=${id}] span`);
     appHeaderText.innerText = currentLabelSection.innerText;
     State.prevInpSection = input;
     if (State.prevInpSection === showAlbums && app.classList.contains("albumOpen")) {
-      navigation.back();
+      window["navigation"].back();
     }
     if (input !== showImport) {
       State.prevInpSectionGallery = input;
@@ -370,7 +382,7 @@ var changeScreen = (sibligs) => {
     }
   }
   if (State.selectionMode) {
-    navigation.back();
+    window["navigation"].back();
   }
   sibligs.forEach(({ id: id2, checked }) => {
     const label = $(`label[for=${id2}]`);
@@ -514,7 +526,7 @@ var toggleSelection = (container, section) => {
   const unselectedIcon = $(".unselectedIcon", container);
   let timeoutId = NaN;
   container.addEventListener("pointerdown", () => {
-    if (State.imgOpen) return;
+    if (State.imgOpen || State.loadingPictures) return;
     const albumOpen = app.classList.contains("albumOpen");
     const isAlbumThumb = container.classList.contains("albumCont");
     if (albumOpen && isAlbumThumb) return;
@@ -603,15 +615,15 @@ var createPictureElement = ({ picture, albumPath, day, time, year }) => {
   const picturesHeader = $("header", picturesSection);
   const picturesDate = $(".picturesDate", picturesSection);
   const picturesCont = $(".picturesOfTheDate", picturesSection);
+  const currCont = app.classList.contains("albumOpen") ? albumPics : picturesCont;
   picturesSection.dataset.time = time;
   picturesSection.dataset.day = day;
   if (isTemplate) {
-    const year2 = +day.slice(-4);
-    const formatDate = year2 !== currYear ? day.slice(4) : day.slice(4, -4);
+    const formatDate = year !== currYear ? day.slice(4) : day.slice(4, -4);
     picturesDate.innerText = day === currDay ? "Today" : formatDate;
     toggleMultipleSelection(picturesHeader, () => picturesCont.children);
   }
-  picturesCont.append(picture);
+  currCont.append(picture);
   pictures.append(picturesSection);
 };
 var createAlbumElement = (absolutePath, albumNameStr) => {
@@ -620,25 +632,25 @@ var createAlbumElement = (absolutePath, albumNameStr) => {
   const albumLength = $(".albumLength", albumCont);
   const albumName = $(".albumName", albumCont);
   const albumThumbImg = new Image();
-  State.imgs[absolutePath].then(async (uri) => {
+  albumName.innerText = albumNameStr;
+  albumThumb.append(albumThumbImg);
+  albums.append(albumCont);
+  const decodeThumb = State.imgs[absolutePath].then(async (uri) => {
     const picture = State.pics[absolutePath] ?? {};
     const { isVideo } = picture.dataset ?? {};
     albumThumbImg.fetchpriority = "high";
     albumThumbImg.decoding = "async";
     if (+isVideo) {
       const pictureImg = $(".pictureImg", picture);
-      await pictureImg.decode().catch((e) => 0);
+      await tryP(pictureImg.decode());
       const { src: minURI } = pictureImg;
       albumThumbImg.src = minURI;
     } else albumThumbImg.src = uri;
-    await albumThumbImg.decode().catch((e) => 0);
+    await tryP(albumThumbImg.decode());
     const max = Math.max(albumThumbImg.width, albumThumbImg.height);
     if (max < 200) albumThumbImg.style.imageRendering = "pixelated";
   });
-  albumName.innerText = albumNameStr;
-  albumThumb.append(albumThumbImg);
-  albums.append(albumCont);
-  return albumCont;
+  return { albumCont, decodeThumb };
 };
 
 // src/scripts/viewerScroll.js
@@ -788,6 +800,18 @@ var onViewerHorizontalSnapEnd = (newMainView, prevMainView, sameMainView) => {
     $(".imgViewerImg", newMainView.nextSibling).style.display = "block";
   $(".imgViewerImg", newMainView).style.display = "block";
 };
+var onViewerScrollStart = () => {
+  imgDetailsHeader.style.opacity = "";
+  mainHeaderTitle.style.opacity = "";
+  mainHeader.style.backgroundColor = "";
+  imgSubOpts.style.opacity = 1;
+  imgSubOpts.style.pointerEvents = "auto";
+  if (State.videoOpen) {
+    videoControls.style.pointerEvents = "auto";
+    videoControls.style.opacity = 1;
+  }
+  cl("start");
+};
 var onViewerScroll = () => {
   if (app.classList.contains("inTransition")) return;
   const { innerHeight } = window;
@@ -804,9 +828,9 @@ var onViewerScroll = () => {
       videoControls.style.pointerEvents = pointerEvents;
     }
   }
-  if (currScroll < scrollBottom - 120) {
-    mainHeader.style.backgroundColor = "";
-    mainHeaderTitle.style.opacity = "";
+  cl(currScroll, scrollBottom);
+  if (currScroll < 120) {
+    onViewerScrollStart();
     return;
   }
   const detailsOpacity = (scrollBottom - 30 - currScroll) / 60;
@@ -814,9 +838,10 @@ var onViewerScroll = () => {
   mainHeaderTitle.style.opacity = 1 - detailsOpacity;
   mainHeader.style.backgroundColor = "#000";
 };
-var onViewerVerticalSnapEnd = (_, a, isSameSection) => {
+var onViewerVerticalSnapEnd = (newMainView, a, isSameSection) => {
   const currScroll = Math.round(imgViewer.scrollTop);
   if (!isSameSection) {
+    alert(currScroll);
     if (currScroll === 0) {
       history.back();
     } else {
@@ -824,11 +849,7 @@ var onViewerVerticalSnapEnd = (_, a, isSameSection) => {
       navigate({ details: true });
     }
   }
-  const scrollBottom = imgViewer.scrollHeight - imgViewer.clientHeight;
-  const detailsOpacity = (scrollBottom - 30 - currScroll) / 60;
-  imgDetailsHeader.style.opacity = detailsOpacity;
-  mainHeaderTitle.style.opacity = 1 - detailsOpacity;
-  mainHeader.style.backgroundColor = currScroll ? "#000" : "";
+  viewerSectionConfig.onSnap(newMainView);
 };
 var viewerPictureConfig = {
   scrollCont: imgViewerScroll,
@@ -846,11 +867,101 @@ var viewerSectionConfig = {
   scrollCont: imgViewer,
   initScrollChild: imgViewerSlider,
   onSnapEnd: onViewerVerticalSnapEnd,
+  onSnap: (newMainView) => {
+    if (newMainView === imgViewerSlider) {
+      onViewerScrollStart();
+      return;
+    }
+    if (State.videoOpen) {
+      videoControls.style.opacity = 0;
+      videoControls.style.pointerEvents = "none";
+    }
+    imgSubOpts.style.pointerEvents = "none";
+    imgSubOpts.style.opacity = 0;
+    imgDetailsHeader.style.opacity = 0;
+    mainHeaderTitle.style.opacity = 1;
+    mainHeader.style.backgroundColor = "#000";
+  },
+  onScroll: onViewerScroll,
   getScrollChildren: () => Array.from($$("#imgViewerSlider, #imgViewerInfo")),
   onCancel: () => State.verticalScroll = false
 };
 var changeViewerSection = addScrollSnap(viewerSectionConfig);
 var changeViewerPicture = addScrollSnap(viewerPictureConfig);
+
+// src/scripts/backMode.js
+var closeAlbum = () => {
+  appHeaderText.innerText = "Albums";
+  app.classList.remove("albumOpen");
+  $(".albumCont.open")?.classList.remove("open");
+  for (const picture of $$(".picture")) {
+    const { day } = picture.dataset;
+    const { imgGroupId } = $(".pictureImg", picture).dataset;
+    const viewPicture = $(`.imgViewerImg[data-img-group-id="${imgGroupId}"]`).parentElement;
+    const picByDateCont = $(`.picturesSection[data-day="${day}"] .picturesOfTheDate`);
+    picture.hidden = viewPicture.hidden = false;
+    picByDateCont.append(picture);
+  }
+  app.scrollTo({
+    top: 220,
+    behavior: app.scrollTop ? "instant" : "smooth"
+  });
+  sortPicsByDate();
+};
+var centerSectionScroll = (section, picture) => {
+  const { y: sectionY, height: sectionH } = section.getBoundingClientRect();
+  const { y: pictureY, height: pictureH } = picture.getBoundingClientRect();
+  const albumBottom = sectionY + sectionH;
+  if (pictureY > albumBottom) {
+    section.scrollTop = section.scrollTop + (pictureY - albumBottom) + pictureH;
+  } else if (pictureY + pictureH < sectionY + 80) {
+    section.scrollTop = section.scrollTop - (sectionY + 80 - pictureY);
+  }
+};
+var onBackPage = () => {
+  if (window["navigation"].canGoBack) {
+    window["navigation"].back();
+  }
+};
+var onPopState = (event) => {
+  const inTransition = app.classList.contains("inTransition");
+  const imgOpen = app.classList.contains("imgView");
+  const albumOpen = app.classList.contains("albumOpen");
+  moreOptsChk.checked = false;
+  app.scrollTo({
+    top: 220,
+    behavior: app.scrollTop ? "instant" : "smooth"
+  });
+  if (app.classList.contains("imports")) {
+    app.classList.remove("imports");
+    for (const pictureImg of $$(".importPicture .pictureImg")) {
+      const { imgGroupId } = pictureImg.dataset;
+      const picture = $(`.picture[data-img-group-id="${imgGroupId}"]`);
+      picture.append(pictureImg);
+    }
+    return;
+  }
+  if (State.details.visible) {
+    State.details.visible = false;
+    changeViewerSection(imgViewerSlider, true, onViewerScrollStart);
+    return;
+  }
+  if (State.selectionMode) {
+    closeSelectionMode();
+    return;
+  }
+  if (inTransition && albumOpen) {
+    closeAlbum();
+    return;
+  }
+  if (imgOpen) {
+    onPictureClose();
+    return;
+  }
+  if (albumOpen) {
+    closeAlbum();
+  }
+};
 
 // src/scripts/imgViewer.js
 var updateImgViewSize = (imageWidth, imageHeight, img, minImg) => {
@@ -882,7 +993,8 @@ var updateDetailsInfo = ({ date, length, size, albumPath, fileName }) => {
   imgSize.innerText = size;
 };
 var openDetails = () => {
-  changeViewerSection(imgViewerInfo, true, onViewerVerticalSnapEnd);
+  viewerSectionConfig.onSnap(imgViewerInfo);
+  changeViewerSection(imgViewerInfo, true, () => onViewerVerticalSnapEnd(imgViewerInfo, null, imgViewer.scrollTop === 0));
 };
 var onViewerClick = () => {
   if (mainHeader.style.opacity) {
@@ -912,6 +1024,11 @@ var onPictureClose = async () => {
   const prevVideo = $(".imgViewerImg.video");
   if (viewPicture.previousSibling) $(".imgViewerImg", viewPicture.previousSibling).style.display = "none";
   if (viewPicture.nextSibling) $(".imgViewerImg", viewPicture.nextSibling).style.display = "none";
+  if (app.classList.contains("albumOpen")) {
+    centerSectionScroll(albumPics, picture);
+  } else if (showPictures.checked) {
+    centerSectionScroll(pictures, picture);
+  }
   if (prevVideo) {
     if (!document.pictureInPictureElement) {
       prevVideo.proxy.pause();
@@ -966,7 +1083,7 @@ var onPictureClick = async ({
   $("#imgViewerMinImg")?.removeAttribute("id");
   if (viewPicture.previousSibling) $(".imgViewerImg", viewPicture.previousSibling).style.display = "block";
   if (viewPicture.nextSibling) $(".imgViewerImg", viewPicture.nextSibling).style.display = "block";
-  if (isVideo) {
+  if (State.videoOpen = isVideo) {
     onVideoFocus(bigImg, prevVideo);
     if (!document.pictureInPictureElement) {
       bigImg.proxy.pause();
@@ -1019,7 +1136,6 @@ var getMinImg = async (img, mimetype) => {
     await new Promise((resolve) => {
       img.addEventListener("timeupdate", resolve, { once: true });
       img.currentTime = Math.round(img.duration / 2);
-      setTimeout(resolve, 500);
     });
     canvas.width = width;
     canvas.height = height;
@@ -1059,7 +1175,7 @@ var onAlbumClick = (albumCont, albumPath, absolutePath, hidePicture) => {
   else sortPicsByName(ascending);
   State.imgs[absolutePath].then(async (uri) => {
     currAlbumThumb.src = uri;
-    await currAlbumThumb.decode().catch((e) => 0);
+    await tryP(currAlbumThumb.decode());
     const max = Math.max(currAlbumThumb.width, currAlbumThumb.height);
     if (max < 200) currAlbumThumb.style.imageRendering = "pixelated";
   });
@@ -1091,7 +1207,7 @@ var loadUint = async (uint, { file, picture, importPicture = null, time, day, fi
   const hour24 = date.getHours();
   const dayFormat = day.slice(4).split("").toSpliced(-5, 0, ",").join("");
   const ext = path.split(".").at(-1);
-  const mimetype = MIMETYPES[ext].at(0) ?? "application/octet-stream";
+  const mimetype = MIMETYPES[ext]?.at(0) ?? "application/octet-stream";
   const uri = `data:${mimetype};base64,${b64}`;
   const isVideo = +FILETYPES.video.includes(mimetype);
   const fileObj = new File([uint], fileName, { type: mimetype, lastModified: time });
@@ -1105,7 +1221,6 @@ var loadUint = async (uint, { file, picture, importPicture = null, time, day, fi
   bigImg.classList.add("imgViewerImg");
   minImg.style.display = "none";
   bigImg.style.display = "none";
-  bigImg.src = uri;
   if (importPicture) {
     importPicture.dataset.imgGroupId = imgGroupId;
   }
@@ -1143,11 +1258,18 @@ var loadUint = async (uint, { file, picture, importPicture = null, time, day, fi
       }
     });
     const decoded = new Promise(
-      (resolve) => bigImg.oncanplaythrough = resolve
+      (resolve) => bigImg.addEventListener("canplaythrough", () => {
+        const videoIconDuration = videoIconTmpl.content.cloneNode(true);
+        const videoDurationCont = $("span", videoIconDuration);
+        videoDurationCont.innerText = formatSeconds(bigImg.duration);
+        picture.append(videoIconDuration);
+        resolve();
+      }, { once: true })
     );
     bigImg.proxy = videoProxy;
     bigImg.decode = () => decoded;
   }
+  bigImg.src = uri;
   await tryP(bigImg.decode());
   const { minURI = uri, initWidth, initHeight, max } = await getMinImg(bigImg, mimetype);
   const aspectRatio = `${initWidth} / ${initHeight}`;
@@ -1185,7 +1307,7 @@ var loadUint = async (uint, { file, picture, importPicture = null, time, day, fi
   updateImgViewSize(initWidth, initHeight, bigImg, minImg);
   return uri;
 };
-var loadPicture = ([path, file], zipName, albumNames, isImported, zipFileCont) => {
+var loadPicture = async ([path, file], zipName, albumNames, isImported, zipFileCont) => {
   const { date } = file;
   const day = date.toDateString();
   const time = date.getTime();
@@ -1228,6 +1350,7 @@ var loadPicture = ([path, file], zipName, albumNames, isImported, zipFileCont) =
     }
   }
   const uintProm = file.async("uint8array").then((uint) => loadUint(uint, uintAdditionalInfo));
+  await Promise.all([uintProm]);
   State.imgs[absolutePath] = uintProm;
   State.pics[absolutePath] = picture;
   createPictureElement({ picture, albumPath, day, time, year });
@@ -1240,7 +1363,7 @@ var loadPicture = ([path, file], zipName, albumNames, isImported, zipFileCont) =
     albumLength.innerText = $$(`.picture[data-album-path="${importsName}"]`).length;
     return;
   }
-  const albumCont = createAlbumElement(absolutePath, albumName);
+  const { albumCont, decodeThumb } = createAlbumElement(absolutePath, albumName);
   albumCont.dataset.albumPath = albumPath;
   albumCont.dataset.albumName = albumName;
   albumCont.dataset.absolutePath = absolutePath;
@@ -1258,23 +1381,27 @@ var loadPicture = ([path, file], zipName, albumNames, isImported, zipFileCont) =
   toggleSelection(albumCont, albums);
 };
 var loadPictures = async (picturesEntries, zipName, isImported, zipFileCont) => {
+  State.loadingPictures = true;
   const albumNames = {};
   const picturesSorted = picturesEntries.toSorted(
     ([, file1], [, file2]) => file2.date.getTime() - file1.date.getTime()
   );
-  picturesSorted.forEach((entrie) => loadPicture(entrie, zipName, albumNames, isImported, zipFileCont));
-  pictures.replaceChildren.apply(
-    pictures,
-    Array.from(pictures.children).sort(
-      (section1, section2) => section2.dataset.time - section1.dataset.time
-    )
-  );
-  await Promise.all(Object.values(State.imgs));
-  sortAlbums();
+  for (const entrie of picturesSorted) {
+    await new Promise((resolve) => {
+      loadPicture(entrie, zipName, albumNames, isImported, zipFileCont).then(() => {
+        resolve();
+      });
+      setTimeout(() => {
+        cl("jump");
+      }, 150);
+    });
+  }
+  State.loadingPictures = false;
   sortPicsByDate();
+  sortAlbums();
 };
 var createFavoritesAlbum = () => {
-  const favoritesAlbum = createAlbumElement(favoritesName, favoritesName);
+  const { albumCont: favoritesAlbum } = createAlbumElement(favoritesName, favoritesName);
   favoritesAlbum.hidden = true;
   favoritesAlbum.dataset.albumPath = favoritesName;
   favoritesAlbum.dataset.albumName = favoritesName;
@@ -1287,7 +1414,7 @@ var createFavoritesAlbum = () => {
 var fileWorker = new Worker("./src/scripts/testFileWorker.js");
 var useFileWorker = async (file) => {
   const { promise, resolve } = Promise.withResolvers();
-  fileWorker.onmessage = ({ data }) => resolve(data);
+  fileWorker.addEventListener("message", ({ data }) => resolve(data), { once: true });
   fileWorker.postMessage(file);
   const entries = await promise;
   entries.forEach(([, fileObj]) => fileObj.async = async () => fileObj.uint);
@@ -1300,16 +1427,16 @@ var loadFiles = () => {
   }
 };
 var loadZip = async (file, isImported) => {
-  const { name: name2, type, lastModifiedDate, lastModified = Date.now() } = file;
+  const { name, type, lastModifiedDate, lastModified = Date.now() } = file;
   if (!Object.values(MIMETYPES).flat().includes(type)) {
     alert(`Invalid file: mimetype ${type} isn't valid`);
-    cl(name2);
+    cl(name);
     return;
   }
   const popupFixed = duplicateConfirmation.parentElement;
   if (MIMETYPES.zip.includes(type)) {
     const hasImported2 = Object.values(State.pics).filter(
-      ({ dataset }) => new RegExp(`^${name2} \\([0-9]+\\)$`).test(dataset.albumPath) || dataset.albumPath === name2
+      ({ dataset }) => new RegExp(`^${name} \\([0-9]+\\)$`).test(dataset.albumPath) || dataset.albumPath === name
     ).reduce((arr2, { dataset }) => {
       const { albumPath } = dataset;
       !arr2.includes(albumPath) && arr2.push(albumPath);
@@ -1331,7 +1458,7 @@ var loadZip = async (file, isImported) => {
       albumCont.dispatchEvent(new Event("click"));
     });
     zipInp.value = "";
-    loadPictures(folderEntries, hasImported2.length ? `${name2} (${hasImported2.length})` : name2, isImported, zipFileCont);
+    loadPictures(folderEntries, hasImported2.length ? `${name} (${hasImported2.length})` : name, isImported, zipFileCont);
     State.prevInpSectionGallery.click();
     return;
   }
@@ -1348,9 +1475,9 @@ var loadZip = async (file, isImported) => {
   }
   zipInp.value = "";
   const fakeZipEntries = [[
-    name2,
+    name,
     {
-      name: name2,
+      name,
       date: "lastModifiedDate" in file ? lastModifiedDate : new Date(lastModified),
       async: async () => data
     }
@@ -1419,13 +1546,13 @@ var sharePicture = () => {
   const pictureImg = $(".picture.view .pictureImg");
   const { imgGroupId } = pictureImg.dataset;
   const [, fileObj] = State.files[imgGroupId];
-  const { name: name2 } = fileObj;
+  const { name } = fileObj;
   const files = [fileObj];
   if (!navigator.canShare({ files })) {
     alert("Your system doesn't support sharing these files.");
     return;
   }
-  navigator.share({ files, title: name2 });
+  navigator.share({ files, title: name });
 };
 var deletePicture = async () => {
   const picture = $(".picture.view");
@@ -1576,71 +1703,11 @@ $$("button, label").forEach((btn) => {
     btn.classList.remove("hover");
   });
 });
-$$("input[type=radio]").forEach((input2) => {
-  const { id: id2, name: name2 } = input2;
-  const sibligs = document.getElementsByName(name2);
-  input2.addEventListener("change", () => changeScreen(sibligs));
+$$("input[type=radio]").forEach((input) => {
+  const { id, name } = input;
+  const sibligs = document.getElementsByName(name);
+  input.addEventListener("change", () => changeScreen(sibligs, input, name, id));
 });
-
-// src/scripts/backMode.js
-var closeAlbum = () => {
-  appHeaderText.innerText = "Albums";
-  app.classList.remove("albumOpen");
-  $(".albumCont.open")?.classList.remove("open");
-  for (const picture of $$(".picture")) {
-    const { day } = picture.dataset;
-    const { imgGroupId } = $(".pictureImg", picture).dataset;
-    const viewPicture = $(`.imgViewerImg[data-img-group-id="${imgGroupId}"]`).parentElement;
-    const picByDateCont = $(`.picturesSection[data-day="${day}"] .picturesOfTheDate`);
-    picture.hidden = viewPicture.hidden = false;
-    picByDateCont.append(picture);
-  }
-  sortPicsByDate();
-};
-var onBackPage = () => {
-  if (navigation.canGoBack) {
-    navigation.back();
-  }
-};
-var onPopState = (event) => {
-  const inTransition = app.classList.contains("inTransition");
-  const imgOpen = app.classList.contains("imgView");
-  const albumOpen = app.classList.contains("albumOpen");
-  moreOptsChk.checked = false;
-  app.scrollTo({
-    top: 220,
-    behavior: app.scrollTop ? "instant" : "smooth"
-  });
-  if (app.classList.contains("imports")) {
-    app.classList.remove("imports");
-    for (const pictureImg of $$(".importPicture .pictureImg")) {
-      const { imgGroupId } = pictureImg.dataset;
-      const picture = $(`.picture[data-img-group-id="${imgGroupId}"]`);
-      picture.append(pictureImg);
-    }
-    return;
-  }
-  if (State.details.visible) {
-    State.details.visible = false;
-    changeViewerSection(imgViewerSlider, true);
-    return;
-  }
-  if (State.selectionMode) {
-    closeSelectionMode();
-    return;
-  }
-  if (inTransition && albumOpen) {
-    closeAlbum();
-    return;
-  }
-  if (imgOpen) {
-    onPictureClose();
-    return;
-  }
-  if (albumOpen) {
-    closeAlbum();
-  }
-};
 
 // src/scripts/test/testPictures.js
 var async = async () => Uint8Array.fromBase64("UklGRvAAAABXRUJQVlA4TOQAAAAvl8BJEBLHkSQ5ig94i4nnCAbgQ8eInUN2HHMPRb8Ism3I5nPB85Ug2zY1ghoc6v2fgC7/EthQsGf/+05ldrm8QLPJJzTbyz/0MC7vEM297tC2QZ6CbZiPbMPzkIkyN8gz1rJ5BrYp3E/l8gSM8qv8772GefxtGp43NEQN62iIGqI284T4OnCXyQ8Eb5/ZFn+YBXmF4BEed4QL8oq7zLb8q5lv1MsnBFfzBsfbIMKCPOIw13OY+YXgMbzg8hH/Ovx5xIS7YD7B1Z1vjMsvsNI3jPPvtDzBf7wu++e/BXtKm8fOHwA=");
@@ -1711,7 +1778,6 @@ sortPicsBtn.addEventListener("click", openSortOpts);
 sortAccept.addEventListener("click", onSortAccept);
 sortCancel.addEventListener("click", onSortCancel);
 zipInp.addEventListener("change", loadFiles);
-imgViewer.addEventListener("scroll", onViewerScroll);
 imgViewerScroll.addEventListener("pointerdown", onViewerPointerDown);
 addFavoriteBtn.addEventListener("click", toggleFavoritePicture);
 deleteBtn.addEventListener("click", deletePicture);

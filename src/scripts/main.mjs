@@ -77,7 +77,7 @@ sortCancel.addEventListener('click', onSortCancel)
 
 zipInp.addEventListener('change', loadFiles)
 
-imgViewer.addEventListener('scroll', onViewerScroll)
+//imgViewer.addEventListener('scroll', onViewerScroll)
 imgViewerScroll.addEventListener('pointerdown', onViewerPointerDown)
 
 addFavoriteBtn.addEventListener('click', toggleFavoritePicture)

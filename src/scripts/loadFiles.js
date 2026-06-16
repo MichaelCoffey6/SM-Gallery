@@ -8,7 +8,8 @@ const fileWorker = new Worker('./src/scripts/testFileWorker.js')
 
 const useFileWorker = async file => {
   const { promise, resolve } = Promise.withResolvers()
-  fileWorker.onmessage = ({ data }) => resolve(data)
+  
+  fileWorker.addEventListener('message', ({ data }) => resolve(data), { once: true })
   fileWorker.postMessage(file)
   
   const entries = await promise

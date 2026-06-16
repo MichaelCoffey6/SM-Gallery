@@ -40,14 +40,14 @@ export const changeImportSection = () => {
   }
 }
 
-export const changeScreen = sibligs => {
+export const changeScreen = (sibligs, input, name, id) => {
   if (name === showPictures.name) {
     const currentLabelSection = $(`label[for=${id}] span`)
     appHeaderText.innerText = currentLabelSection.innerText
     State.prevInpSection = input
 
     if (State.prevInpSection === showAlbums && app.classList.contains('albumOpen')) {
-      navigation.back()
+      window['navigation'].back()
     }
 
     if (input !== showImport) {
@@ -57,7 +57,7 @@ export const changeScreen = sibligs => {
   }
 
   if (State.selectionMode) {
-    navigation.back()
+    window['navigation'].back()
   }
 
   sibligs.forEach(({ id, checked }) => {
